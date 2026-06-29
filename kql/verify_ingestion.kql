@@ -1,0 +1,3 @@
+// Sanity-check queries confirming row counts after ingestion.
+WAFAudit_CL | count    // expected 2520
+WAFAccess_CL | count   // expected 2492

@@ -106,8 +106,8 @@ ACCESS_STREAM=Custom-WAFAccess_CL
 KQL detections run over the two tables — see [`kql/`](kql/). The headline rule
 (`bypass_detection_leftanti.kql`) `leftanti`-joins access traffic against the set of
 URIs that triggered a WAF rule, isolating attack-shaped `200`s with no verdict
-(true bypasses). `pl1_vs_pl2_comparison.kql` reproduces the dissertation's
-threshold-not-rules result.
+(true bypasses). `verify_ingestion.kql` confirms the post-ingestion row counts
+(`WAFAudit_CL` = 2,520, `WAFAccess_CL` = 2,492).
 
 ---
 

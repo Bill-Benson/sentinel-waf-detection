@@ -71,18 +71,19 @@ log only shows status codes. Joined, the gap becomes visible.
 **[`kql/bypass_detection_leftanti.kql`](kql/bypass_detection_leftanti.kql)** —
 the headline hunt:
 
-1. From `WAFAccess_CL`, take requests that returned **`HTTP 200`** and whose
-   (URL-decoded) URI matches **SQLi/XSS attack *grammar*** — structural patterns like
-   `SELECT ... CASE WHEN`, `<script>`, `onerror=` — deliberately **not** bare keywords,
-   so benign text such as *"select your preferred juice flavour"* is not flagged.
+1. From `WAFAccess_CL`, take requests to the tested endpoint that returned
+   **`HTTP 200`** and whose URI matches **SQLi/XSS attack *grammar*** — structural
+   patterns like `(SELECT`, `CASE WHEN`, `<script`, `onerror` (matched against the
+   percent-encoded URI) — deliberately **not** bare keywords, so benign text such as
+   *"select your preferred juice flavour"* is not flagged.
 2. `join kind=leftanti` against the set of URIs that triggered a real rule in
-   `WAFAudit_CL` (`isnotempty(RuleId)`), keyed on URI + paranoia level.
+   `WAFAudit_CL` (`isnotempty(RuleId)`).
 3. What remains = **attack-shaped requests that succeeded with no WAF rule firing** —
-   genuine bypasses.
+   genuine bypasses, returned distinct by URI and `ParanoiaLevel`.
 
-**[`kql/pl1_vs_pl2_comparison.kql`](kql/pl1_vs_pl2_comparison.kql)** —
-reproduces the dissertation's *threshold-not-rules* finding directly in Sentinel:
-blocked-vs-passed and rule-firing counts split by `ParanoiaLevel`.
+**[`kql/verify_ingestion.kql`](kql/verify_ingestion.kql)** —
+post-ingestion sanity check: confirms the expected row counts in each custom table
+(`WAFAudit_CL` = 2,520, `WAFAccess_CL` = 2,492).
 
 ---
 
@@ -92,10 +93,10 @@ blocked-vs-passed and rule-firing counts split by `ParanoiaLevel`.
   **`1 AND (SELECT CASE WHEN (1=1) THEN 1 ELSE 0 END)=1`**
   (dissertation ID **SQLI_33**) as a `200`/no-rule bypass at **both** PL1 and PL2 —
   matching the dissertation's manually-identified bypass set.
-- The PL1-vs-PL2 query shows **more requests blocked at PL2** despite **no
-  PL2-specific rules firing** — the extra blocks come solely from the lower anomaly
-  threshold (≥3 vs ≥5), the same *threshold-not-rules* effect the dissertation
-  quantified.
+- Because the result is returned `distinct ... by ParanoiaLevel`, a bypass that
+  persists across configurations appears once per level — making it obvious that the
+  miss is **signature absence**, not a threshold near-miss (consistent with the
+  dissertation's *threshold-not-rules* finding).
 
 ---
 
@@ -104,15 +105,15 @@ blocked-vs-passed and rule-firing counts split by `ParanoiaLevel`.
 > Capture these from the Sentinel portal and drop the PNGs into `screenshots/`.
 
 ![Bypass detection result](screenshots/bypass-result.png)
-![PL1 vs PL2 comparison](screenshots/pl1-vs-pl2.png)
+![Ingestion row counts](screenshots/ingestion-counts.png)
 
 **Shot list — exactly what to capture:**
 
 1. `screenshots/bypass-result.png` — **Logs** blade with
    `bypass_detection_leftanti.kql` run, results grid showing the `SQLI_33`
-   `CASE WHEN` row(s) with `StatusCode 200` and both `ParanoiaLevel` values visible.
-2. `screenshots/pl1-vs-pl2.png` — results of `pl1_vs_pl2_comparison.kql` showing the
-   blocked/passed counts per paranoia level (the threshold effect).
+   `CASE WHEN` bypass row(s) with both `ParanoiaLevel` values visible.
+2. `screenshots/ingestion-counts.png` — `verify_ingestion.kql` results showing the
+   row counts (`WAFAudit_CL` = 2,520, `WAFAccess_CL` = 2,492).
 3. `screenshots/custom-tables.png` *(optional)* — the two custom tables
    (`WAFAudit_CL`, `WAFAccess_CL`) listed under the workspace **Tables**.
 4. `screenshots/dcr-rbac.png` *(optional)* — the DCR's **Access control (IAM)**
