@@ -71,6 +71,9 @@ local JSON rows ──► POST ──► Data Collection Endpoint (DCE)
   `azure-monitor-ingestion` SDK (`ClientSecretCredential` + `LogsIngestionClient`).
 - Rows are batched (≤500/call, SDK also chunks to the API's ~1 MB limit).
 
+The uploader implementing this is [`ingestion/upload_to_sentinel.py`](ingestion/upload_to_sentinel.py)
+(secrets and DCE/DCR read from environment variables; supports `--dry-run`).
+
 **Volume ingested:** ~5,000+ WAF traffic events total — **2,520** audit verdicts
 (`WAFAudit_CL`) + **2,492** access events (`WAFAccess_CL`) — across matched PL1/PL2 runs.
 

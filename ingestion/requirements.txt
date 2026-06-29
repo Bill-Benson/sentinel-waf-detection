@@ -1,0 +1,2 @@
+azure-identity>=1.25
+azure-monitor-ingestion>=1.1
