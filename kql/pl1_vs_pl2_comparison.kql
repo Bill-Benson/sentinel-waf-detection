@@ -1,0 +1,35 @@
+// ============================================================================
+// Paranoia Level 1 vs 2 — "threshold-not-rules" comparison
+// ----------------------------------------------------------------------------
+// Reproduces the dissertation's central finding inside Sentinel: raising the
+// paranoia level blocked MORE requests without any PL2-specific rule firing —
+// the difference is the anomaly threshold (>=3 at PL2 vs >=5 at PL1), not new
+// detection logic.
+//
+// NOTE: Reconstructed from the project schema. Reconcile against the workspace
+// copy if you tuned it further.
+// ============================================================================
+
+// ---- Query A: blocked vs passed on the attack endpoint, by paranoia level ----
+WAFAccess_CL
+| where RequestURI startswith "/rest/products/search"     // the tested endpoint
+| summarize
+    Requests   = count(),
+    Blocked403 = countif(StatusCode == 403),
+    Passed200  = countif(StatusCode == 200)
+    by ParanoiaLevel
+| extend BlockRatePct = round(100.0 * Blocked403 / Requests, 1)
+| sort by ParanoiaLevel asc;
+
+// ---- Query B: rule firing by paranoia level (run separately) -----------------
+// Shows rule hits still come from the SAME rules at both levels (no PL2 rules),
+// while total blocking rises — i.e. threshold arithmetic, not extra rules.
+//
+// WAFAudit_CL
+// | summarize
+//     Transactions = count(),
+//     RuleHits     = countif(isnotempty(RuleId)),
+//     SQLi         = countif(AttackCategory == "SQLi"),
+//     XSS          = countif(AttackCategory == "XSS")
+//     by ParanoiaLevel
+// | sort by ParanoiaLevel asc

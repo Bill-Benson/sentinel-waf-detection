@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Secrets / local config (never commit credentials or real resource IDs)
+.env
+*.env
+*.local
+local_config.*
+secrets.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / agent
+.claude/
+.vscode/

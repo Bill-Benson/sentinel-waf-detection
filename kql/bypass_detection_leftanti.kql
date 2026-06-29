@@ -1,0 +1,38 @@
+// ============================================================================
+// WAF Bypass Detection — anti-join hunt
+// ----------------------------------------------------------------------------
+// Surfaces attack-shaped requests that returned HTTP 200 with NO matching WAF
+// rule hit -> genuine bypasses (the WAF let them through).
+//
+// Layers:
+//   WAFAccess_CL  = what actually happened (every request + status code)
+//   WAFAudit_CL   = what the WAF caught   (transactions where a rule fired)
+//
+// NOTE: Reconstructed from the project schema and the documented detection
+// design. Reconcile against the exact query saved in the Sentinel workspace
+// before treating as canonical (regex grammar and join keys in particular).
+// ============================================================================
+
+// Attack GRAMMAR (structural), not bare keywords — so benign text containing
+// words like "select"/"or" (e.g. "select your preferred juice flavour") is NOT
+// flagged. URIs are URL-decoded first because the raw logs are percent-encoded.
+let AttackGrammar = @"(?i)(union\s+select|select\s+.*\bcase\s+when\b|\bcase\s+when\b|\b(or|and)\b\s*\(?\s*\d+\s*=\s*\d+|'\s*(or|and)\b|--\s|#$|<\s*script|onerror\s*=|<\s*svg|<\s*img[^>]*onerror|javascript:)";
+
+// URIs the WAF actually fired a rule on (a real verdict), keyed for the anti-join.
+let RuleFired =
+    WAFAudit_CL
+    | where isnotempty(RuleId)
+    | distinct RequestURI, ParanoiaLevel;
+
+WAFAccess_CL
+| where StatusCode == 200                              // request succeeded
+| extend DecodedURI = url_decode(RequestURI)
+| where DecodedURI matches regex AttackGrammar         // looks like an attack
+// keep only access rows with NO matching rule-firing audit row (same URI + PL):
+| join kind=leftanti RuleFired on RequestURI, ParanoiaLevel
+| project TimeGenerated, ParanoiaLevel, ClientIP, RequestMethod,
+          StatusCode, RequestURI, DecodedURI, UserAgent
+| sort by ParanoiaLevel asc, TimeGenerated asc
+// Expected: includes the boolean-blind SQLi SQLI_33
+//   "1 AND (SELECT CASE WHEN (1=1) THEN 1 ELSE 0 END)=1"
+// as a 200/no-rule bypass at BOTH ParanoiaLevel 1 and 2.
