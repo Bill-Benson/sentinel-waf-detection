@@ -104,21 +104,18 @@ post-ingestion sanity check: confirms the expected row counts in each custom tab
 
 > Capture these from the Sentinel portal and drop the PNGs into `screenshots/`.
 
-![Bypass detection result](screenshots/bypass-result.png)
-![Ingestion row counts](screenshots/ingestion-counts.png)
+![WAF bypass detection leftanti-join query in the Sentinel Logs blade](screenshots/bypass-detection-query.png)
 
-**Shot list — exactly what to capture:**
+*The bypass hunt (`bypass_detection_leftanti.kql`) running against the two custom tables in Microsoft Sentinel.*
 
-1. `screenshots/bypass-result.png` — **Logs** blade with
-   `bypass_detection_leftanti.kql` run, results grid showing the `SQLI_33`
-   `CASE WHEN` bypass row(s) with both `ParanoiaLevel` values visible.
-2. `screenshots/ingestion-counts.png` — `verify_ingestion.kql` results showing the
-   row counts (`WAFAudit_CL` = 2,520, `WAFAccess_CL` = 2,492).
-3. `screenshots/custom-tables.png` *(optional)* — the two custom tables
-   (`WAFAudit_CL`, `WAFAccess_CL`) listed under the workspace **Tables**.
-4. `screenshots/dcr-rbac.png` *(optional)* — the DCR's **Access control (IAM)**
-   blade showing the app registration with **Monitoring Metrics Publisher**
-   (blur/redact any tenant, subscription, or object IDs).
+![The SQLI_33 boolean-blind bypass surfaced at both Paranoia Level 1 and 2](screenshots/bypass-paranoia-levels.png)
+
+*Result: the boolean-blind SQLi (`… SELECT CASE WHEN …`) is returned at **both** `ParanoiaLevel` 1 and 2 — an `HTTP 200` request with no matching WAF rule, i.e. a bypass that persists across configurations.*
+
+**Optional further captures** (drop into `screenshots/`):
+
+- `custom-tables.png` — the `WAFAudit_CL` / `WAFAccess_CL` custom tables under the workspace **Tables**.
+- `dcr-rbac.png` — the DCR's **Access control (IAM)** blade showing the app registration with **Monitoring Metrics Publisher** (redact any tenant, subscription, or object IDs first).
 
 ---
 
